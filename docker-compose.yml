@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  app:
+    container_name: 'attendance_app'
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile
+    volumes:
+      - .:/go/app/
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+  db:
+    container_name: 'attendance_db'
+    image: mysql:5.7-oracle
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: attendance_management
+    ports:
+      - 3306:3306
+    volumes:
+      - ./build/database/data:/var/lib/mysql
+      - ./build/database/sql:/docker-entrypoint-initdb.d
+      - ./build/database/my.cnf:/etc/mysql/conf.d/my.cnf
