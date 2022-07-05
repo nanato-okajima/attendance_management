@@ -13,7 +13,7 @@ CREATE TABLE attendance_management.attendances(
     employee_id int UNSIGNED,
     opening_time DATETIME NOT NULL,
     closing_time DATETIME NOT NULL,
-    attendance_status TINYINT UNSIGNED NOT NULL,touc
+    attendance_status TINYINT UNSIGNED NOT NULL,
     PRIMARY KEY (attendance_id),
     FOREIGN KEY (employee_id) REFERENCES employees(employee_number) ON DELETE CASCADE
 );

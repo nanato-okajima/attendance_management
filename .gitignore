@@ -1,2 +1,3 @@
 tmp/
 build/database/data
+.env

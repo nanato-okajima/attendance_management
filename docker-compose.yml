@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: ./build/Dockerfile
+    env_file:
+      - .env
     volumes:
       - .:/go/app/
     ports:
