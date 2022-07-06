@@ -56,10 +56,19 @@ func AttendanceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	db := setupDB()
-	attendance := createRecord(&req)
-	db.Model(&Attendance{}).Where("attendance_id = " + id).Updates(attendance)
 
-	createResponse(w, http.StatusOK, "updated!")
+	if r.Method == "PUT" {
+		attendance := createRecord(&req)
+		db.Model(&Attendance{}).Where("attendance_id = " + id).Updates(attendance)
+
+		createResponse(w, http.StatusOK, "updated!")
+	}
+
+	if r.Method == "DELETE" {
+		db.Where("attendance_id = " + id).Delete(&Attendance{})
+
+		createResponse(w, http.StatusOK, "deleted!")
+	}
 }
 
 func AttendanceRegisterHandler(w http.ResponseWriter, r *http.Request) {
