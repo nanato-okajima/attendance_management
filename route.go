@@ -23,10 +23,11 @@ type Request struct {
 }
 
 type Attendance struct {
-	EmployeeId       int64
-	OpeningTime      string
-	ClosingTime      string
-	AttendanceStatus int64
+	AttendanceId     int64  `json:"attendance_id"`
+	EmployeeId       int64  `json:"employee_id"`
+	OpeningTime      string `json:"opening_time"`
+	ClosingTime      string `json:"closing_time"`
+	AttendanceStatus int64  `json:"attendance_status"`
 }
 
 type DBEnv struct {
@@ -39,6 +40,7 @@ type DBEnv struct {
 func settingRoute() {
 	http.HandleFunc("/attendance/", AttendanceHandler)
 	http.HandleFunc("/attendance/register", AttendanceRegisterHandler)
+	http.HandleFunc("/attendance/list", AttendanceListHandler)
 }
 
 func AttendanceHandler(w http.ResponseWriter, r *http.Request) {
@@ -91,6 +93,21 @@ func AttendanceRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, err.Error())
 		return
 	}
+}
+
+func AttendanceListHandler(w http.ResponseWriter, r *http.Request) {
+	db := setupDB()
+	attendances := []Attendance{}
+	_ = db.Find(&attendances)
+
+	e, err := json.Marshal(attendances)
+	if err != nil {
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(e)
 }
 
 func createRecord(req *Request) *Attendance {
