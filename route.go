@@ -3,18 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/kelseyhightower/envconfig"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-)
-
-const (
-	dsnFormat = "%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local"
+	"github.com/nanato-okajima/attendance_management/database"
+	"github.com/nanato-okajima/attendance_management/validator"
 )
 
 type Request struct {
@@ -30,13 +24,6 @@ type Attendance struct {
 	AttendanceStatus int64  `json:"attendance_status"`
 }
 
-type DBEnv struct {
-	User     string
-	Password string
-	Host     string
-	Name     string
-}
-
 func settingRoute() {
 	http.HandleFunc("/attendance/", AttendanceHandler)
 	http.HandleFunc("/attendance/register", AttendanceRegisterHandler)
@@ -46,57 +33,75 @@ func settingRoute() {
 func AttendanceHandler(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		fmt.Fprintf(w, err.Error())
+		fmt.Fprint(w, err.Error())
 		return
 	}
 	id := strings.TrimPrefix(r.URL.Path, "/attendance/")
 
-	errMsg := validation(req)
+	errMsg, err := validator.Validation(req)
+	if err != nil {
+		log.Println("error")
+		return
+	}
 	if len(errMsg) > 0 {
 		fmt.Println(strings.Join(errMsg, ":"))
 		return
 	}
 
-	db := setupDB()
+	db := database.GetDBCli()
 
 	if r.Method == "PUT" {
 		attendance := createRecord(&req)
 		db.Model(&Attendance{}).Where("attendance_id = " + id).Updates(attendance)
 
-		createResponse(w, http.StatusOK, "updated!")
+		err := createResponse(w, http.StatusOK, "updated!")
+		if err != nil {
+			log.Println("error")
+			return
+		}
 	}
 
 	if r.Method == "DELETE" {
 		db.Where("attendance_id = " + id).Delete(&Attendance{})
 
-		createResponse(w, http.StatusOK, "deleted!")
+		err := createResponse(w, http.StatusOK, "deleted!")
+		if err != nil {
+			log.Println("error")
+			return
+		}
 	}
 }
 
 func AttendanceRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		fmt.Fprintf(w, err.Error())
+		fmt.Fprint(w, err.Error())
 		return
 	}
 
-	errMsg := validation(req)
+	errMsg, err := validator.Validation(req)
+	if err != nil {
+		log.Println("error")
+		return
+	}
 	if len(errMsg) > 0 {
 		fmt.Println(strings.Join(errMsg, ":"))
 		return
 	}
 
-	db := setupDB()
+	db := database.GetDBCli()
+
 	attendance := createRecord(&req)
 	_ = db.Create(attendance)
 	if err := createResponse(w, http.StatusCreated, "created!"); err != nil {
-		fmt.Fprintf(w, err.Error())
+		fmt.Fprint(w, err.Error())
 		return
 	}
 }
 
 func AttendanceListHandler(w http.ResponseWriter, r *http.Request) {
-	db := setupDB()
+	db := database.GetDBCli()
+
 	attendances := []Attendance{}
 	_ = db.Find(&attendances)
 
@@ -107,7 +112,11 @@ func AttendanceListHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write(e)
+	_, err = w.Write(e)
+	if err != nil {
+		log.Println("error")
+		return
+	}
 }
 
 func createRecord(req *Request) *Attendance {
@@ -119,19 +128,6 @@ func createRecord(req *Request) *Attendance {
 	}
 }
 
-func setupDB() *gorm.DB {
-	var env DBEnv
-	envconfig.Process("db", &env)
-
-	dsn := fmt.Sprintf(dsnFormat, env.User, env.Password, env.Host, env.Name)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		println(err)
-	}
-
-	return db
-}
-
 func createResponse(w http.ResponseWriter, statusCode int, message string) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
@@ -141,47 +137,4 @@ func createResponse(w http.ResponseWriter, statusCode int, message string) error
 	}
 
 	return nil
-}
-
-func validation(attendance Request) []string {
-	validate := validator.New()
-	validate.RegisterValidation("date_format_check", DateFormatCheck)
-
-	if err := validate.Struct(attendance); err != nil {
-		var errorMessages []string
-		for _, err := range err.(validator.ValidationErrors) {
-			var errorMessage string
-			fieldName := err.Field()
-
-			switch fieldName {
-			case "OpeningTime":
-				typ := err.Tag()
-				switch typ {
-				case "required":
-					errorMessage = "OpeningTimeは必須項目です"
-				case "date_format_check":
-					errorMessage = "OpeningTimeの日付形式が不正です"
-				}
-			case "ClosingTime":
-				typ := err.Tag()
-				switch typ {
-				case "required":
-					errorMessage = "OpeningTimeは必須項目です"
-				case "date_format_check":
-					errorMessage = "ClosingTimeの日付形式が不正です"
-				}
-			}
-			errorMessages = append(errorMessages, errorMessage)
-			return errorMessages
-		}
-	}
-	return nil
-}
-
-func DateFormatCheck(fl validator.FieldLevel) bool {
-	_, err := time.Parse("2006-01-02 15:04:05", fl.Field().String())
-	if err != nil {
-		return false
-	}
-	return true
 }
