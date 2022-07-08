@@ -1,16 +1,17 @@
 package validator
 
 import (
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator"
+	"golang.org/x/xerrors"
 )
 
-func Validation(target interface{}) ([]string, error) {
+func Validation(target interface{}) error {
 	validate := validator.New()
-	err := validate.RegisterValidation("date_format_check", DateFormatCheck)
-	if err != nil {
-		return nil, err
+	if err := validate.RegisterValidation("date_format_check", DateFormatCheck); err != nil {
+		return err
 	}
 
 	if err := validate.Struct(target); err != nil {
@@ -39,9 +40,9 @@ func Validation(target interface{}) ([]string, error) {
 			}
 			errorMessages = append(errorMessages, errorMessage)
 		}
-		return errorMessages, nil
+		return xerrors.New(strings.Join(errorMessages, ","))
 	}
-	return nil, nil
+	return nil
 }
 
 func DateFormatCheck(fl validator.FieldLevel) bool {
