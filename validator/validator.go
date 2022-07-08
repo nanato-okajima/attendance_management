@@ -6,14 +6,14 @@ import (
 	"github.com/go-playground/validator"
 )
 
-func Validation(attendance interface{}) ([]string, error) {
+func Validation(target interface{}) ([]string, error) {
 	validate := validator.New()
 	err := validate.RegisterValidation("date_format_check", DateFormatCheck)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validate.Struct(attendance); err != nil {
+	if err := validate.Struct(target); err != nil {
 		var errorMessages []string
 		for _, err := range err.(validator.ValidationErrors) {
 			var errorMessage string
