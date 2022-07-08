@@ -8,11 +8,11 @@ import (
 )
 
 func main() {
-	settingRoute()
+	router := settingRoute()
 
 	if err := database.SetupDB(); err != nil {
 		log.Fatal(err)
 	}
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", router))
 }

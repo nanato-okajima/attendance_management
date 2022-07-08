@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var db *gorm.DB
+var DB DBCli
 
 const (
 	dsnFormat = "%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local"
@@ -21,6 +21,10 @@ type DBEnv struct {
 	Name     string
 }
 
+type DBCli struct {
+	Client *gorm.DB
+}
+
 func SetupDB() error {
 	var env DBEnv
 	err := envconfig.Process("db", &env)
@@ -29,14 +33,16 @@ func SetupDB() error {
 	}
 
 	dsn := fmt.Sprintf(dsnFormat, env.User, env.Password, env.Host, env.Name)
-	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	client, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return err
 	}
 
+	DB = DBCli{client}
+
 	return nil
 }
 
-func GetDBCli() *gorm.DB {
-	return db
+func GetDBCli() DBCli {
+	return DB
 }
