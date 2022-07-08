@@ -7,15 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/kelseyhightower/envconfig"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-
+	"github.com/nanato-okajima/attendance_management/database"
 	"github.com/nanato-okajima/attendance_management/validator"
-)
-
-const (
-	dsnFormat = "%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local"
 )
 
 type Request struct {
@@ -29,13 +22,6 @@ type Attendance struct {
 	OpeningTime      string `json:"opening_time"`
 	ClosingTime      string `json:"closing_time"`
 	AttendanceStatus int64  `json:"attendance_status"`
-}
-
-type DBEnv struct {
-	User     string
-	Password string
-	Host     string
-	Name     string
 }
 
 func settingRoute() {
@@ -62,11 +48,7 @@ func AttendanceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db, err := setupDB()
-	if err != nil {
-		log.Println("error")
-		return
-	}
+	db := database.GetDBCli()
 
 	if r.Method == "PUT" {
 		attendance := createRecord(&req)
@@ -107,11 +89,8 @@ func AttendanceRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db, err := setupDB()
-	if err != nil {
-		log.Println("error")
-		return
-	}
+	db := database.GetDBCli()
+
 	attendance := createRecord(&req)
 	_ = db.Create(attendance)
 	if err := createResponse(w, http.StatusCreated, "created!"); err != nil {
@@ -121,11 +100,7 @@ func AttendanceRegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AttendanceListHandler(w http.ResponseWriter, r *http.Request) {
-	db, err := setupDB()
-	if err != nil {
-		log.Println("error")
-		return
-	}
+	db := database.GetDBCli()
 
 	attendances := []Attendance{}
 	_ = db.Find(&attendances)
@@ -151,22 +126,6 @@ func createRecord(req *Request) *Attendance {
 		ClosingTime:      req.ClosingTime,
 		AttendanceStatus: 1,
 	}
-}
-
-func setupDB() (*gorm.DB, error) {
-	var env DBEnv
-	err := envconfig.Process("db", &env)
-	if err != nil {
-		return nil, err
-	}
-
-	dsn := fmt.Sprintf(dsnFormat, env.User, env.Password, env.Host, env.Name)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
-
-	return db, nil
 }
 
 func createResponse(w http.ResponseWriter, statusCode int, message string) error {
