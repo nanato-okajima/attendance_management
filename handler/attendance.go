@@ -2,12 +2,12 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/nanato-okajima/attendance_management/database"
+	"github.com/nanato-okajima/attendance_management/myerrors"
 	"github.com/nanato-okajima/attendance_management/validator"
 )
 
@@ -24,91 +24,113 @@ type Attendance struct {
 	AttendanceStatus int64  `json:"attendance_status"`
 }
 
-func AttendanceRegisterHandler(w http.ResponseWriter, r *http.Request) {
+type AttendanceHandler struct{}
+
+func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	if err := Register(w, r); err != nil {
+		errorHandler(w, err)
+	}
+}
+
+func Register(w http.ResponseWriter, r *http.Request) error {
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		fmt.Fprint(w, err.Error())
-		return
+		return &myerrors.BadRequestError{Err: err}
 	}
 
 	if err := validator.Validation(req); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(err.Error()))
-		return
+		return &myerrors.BadRequestError{Err: err}
 	}
 
 	attendance := createRecord(&req)
 	_ = database.DB.Client.Create(attendance)
 	if err := createResponse(w, http.StatusCreated, "created!"); err != nil {
-		fmt.Fprint(w, err.Error())
-		return
+		return &myerrors.InternalServerError{Err: err}
+	}
+
+	return nil
+}
+
+func ListHandler(w http.ResponseWriter, r *http.Request) {
+	if err := List(w, r); err != nil {
+		errorHandler(w, err)
 	}
 }
 
-func AttendanceListHandler(w http.ResponseWriter, r *http.Request) {
+func List(w http.ResponseWriter, r *http.Request) error {
 	attendances := []Attendance{}
 	_ = database.DB.Client.Find(&attendances)
 
 	e, err := json.Marshal(attendances)
 	if err != nil {
-		return
+		return &myerrors.BadRequestError{Err: err}
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(e)
 	if err != nil {
-		log.Println("error")
-		return
+		return &myerrors.InternalServerError{Err: err}
+	}
+
+	return nil
+}
+
+func UpdateHandler(w http.ResponseWriter, r *http.Request) {
+	if err := Update(w, r); err != nil {
+		errorHandler(w, err)
 	}
 }
 
-func AttendanceUpdateHandler(w http.ResponseWriter, r *http.Request) {
+func Update(w http.ResponseWriter, r *http.Request) error {
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		fmt.Fprint(w, err.Error())
-		return
+		return &myerrors.BadRequestError{Err: err}
 	}
 	id := strings.TrimPrefix(r.URL.Path, "/attendance/")
 
 	if err := validator.Validation(req); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(err.Error()))
-		return
+		return &myerrors.BadRequestError{Err: err}
 	}
 
 	attendance := createRecord(&req)
 	database.DB.Client.Model(&Attendance{}).Where("attendance_id = " + id).Updates(attendance)
 
 	if err := createResponse(w, http.StatusOK, "updated!"); err != nil {
-		log.Println("error")
-		return
+		return &myerrors.InternalServerError{Err: err}
+	}
+
+	return nil
+}
+
+func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+	if err := Delete(w, r); err != nil {
+		errorHandler(w, err)
 	}
 }
 
-func AttendanceDeleteHandler(w http.ResponseWriter, r *http.Request) {
+func Delete(w http.ResponseWriter, r *http.Request) error {
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		fmt.Fprint(w, err.Error())
-		return
+		return &myerrors.BadRequestError{Err: err}
 	}
 	id := strings.TrimPrefix(r.URL.Path, "/attendance/")
 
 	if err := validator.Validation(req); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(err.Error()))
-		return
+		return &myerrors.BadRequestError{Err: err}
 	}
 
 	database.DB.Client.Where("attendance_id = " + id).Delete(&Attendance{})
 
 	if err := createResponse(w, http.StatusOK, "deleted!"); err != nil {
-		log.Println("error")
-		return
+		return &myerrors.InternalServerError{Err: err}
 	}
+
+	return nil
+}
+
+func NewAttendanceHandler() *AttendanceHandler {
+	return &AttendanceHandler{}
 }
 
 func createRecord(req *Request) *Attendance {
@@ -129,4 +151,16 @@ func createResponse(w http.ResponseWriter, statusCode int, message string) error
 	}
 
 	return nil
+}
+
+func errorHandler(w http.ResponseWriter, err error) {
+	var br *myerrors.BadRequestError
+	if errors.As(err, &br) {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+
+	var is *myerrors.InternalServerError
+	if errors.As(err, &is) {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
