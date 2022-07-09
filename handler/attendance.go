@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/nanato-okajima/attendance_management/database"
+	l "github.com/nanato-okajima/attendance_management/logger"
 	"github.com/nanato-okajima/attendance_management/myerrors"
 	"github.com/nanato-okajima/attendance_management/validator"
 )
@@ -37,6 +38,8 @@ func Register(w http.ResponseWriter, r *http.Request) error {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return &myerrors.BadRequestError{Err: err}
 	}
+
+	l.Logger.Infof("attendance register : requests = {opening_time: %s, closing_time: %s}", req.OpeningTime, req.ClosingTime)
 
 	if err := validator.Validation(req); err != nil {
 		return &myerrors.BadRequestError{Err: err}
@@ -87,7 +90,9 @@ func Update(w http.ResponseWriter, r *http.Request) error {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return &myerrors.BadRequestError{Err: err}
 	}
-	id := strings.TrimPrefix(r.URL.Path, "/attendance/")
+	id := mux.Vars(r)["id"]
+
+	l.Logger.Infof("attendance register : {id: %s} : requests = {opening_time: %s, closing_time: %s}", id, req.OpeningTime, req.ClosingTime)
 
 	if err := validator.Validation(req); err != nil {
 		return &myerrors.BadRequestError{Err: err}
@@ -114,7 +119,9 @@ func Delete(w http.ResponseWriter, r *http.Request) error {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return &myerrors.BadRequestError{Err: err}
 	}
-	id := strings.TrimPrefix(r.URL.Path, "/attendance/")
+	id := mux.Vars(r)["id"]
+
+	l.Logger.Infof("attendance register : {id: %s} : requests = {opening_time: %s, closing_time: %s}", id, req.OpeningTime, req.ClosingTime)
 
 	if err := validator.Validation(req); err != nil {
 		return &myerrors.BadRequestError{Err: err}
@@ -157,10 +164,12 @@ func errorHandler(w http.ResponseWriter, err error) {
 	var br *myerrors.BadRequestError
 	if errors.As(err, &br) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		l.Logger.Errorf("400 ", err)
 	}
 
 	var is *myerrors.InternalServerError
 	if errors.As(err, &is) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		l.Logger.Errorf("500 ", err)
 	}
 }
