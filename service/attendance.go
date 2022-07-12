@@ -1,38 +1,53 @@
 package service
 
 import (
-	"github.com/nanato-okajima/attendance_management/database"
+	"github.com/nanato-okajima/attendance_management/service/repository"
 )
 
-type Attendance struct {
-	AttendanceId     int64  `json:"attendance_id"`
-	EmployeeId       int64  `json:"employee_id"`
-	OpeningTime      string `json:"opening_time"`
-	ClosingTime      string `json:"closing_time"`
-	AttendanceStatus int64  `json:"attendance_status"`
+type AttendanceService interface {
+	Register(attendance *repository.Attendance) error
+	List() (*[]repository.Attendance, error)
+	Update(attendance *repository.Attendance, id string) error
+	Delete(id string) error
 }
 
-func Register(attendance *Attendance) error {
-	_ = database.DB.Client.Create(attendance)
+type attendanceServiceImplementaion struct {
+	ad repository.AttendanceRepository
+}
+
+func NewAttendanceService(ad repository.AttendanceRepository) AttendanceService {
+	return &attendanceServiceImplementaion{ad}
+}
+
+func (asi attendanceServiceImplementaion) Register(attendance *repository.Attendance) error {
+	if err := asi.ad.Insert(attendance); err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func List() (*[]Attendance, error) {
-	attendances := []Attendance{}
-	_ = database.DB.Client.Find(&attendances)
+func (asi attendanceServiceImplementaion) List() (*[]repository.Attendance, error) {
+	attendances := []repository.Attendance{}
+	if err := asi.ad.Fetch(&attendances); err != nil {
+		return nil, err
+	}
 
 	return &attendances, nil
 }
 
-func Update(attendance *Attendance, id string) error {
-	database.DB.Client.Model(&Attendance{}).Where("attendance_id = " + id).Updates(attendance)
+func (asi attendanceServiceImplementaion) Update(attendance *repository.Attendance, id string) error {
+	if err := asi.ad.Update(attendance, id); err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func Delete(id string) error {
-	database.DB.Client.Where("attendance_id = " + id).Delete(&Attendance{})
+func (asi attendanceServiceImplementaion) Delete(id string) error {
+	if err := asi.ad.Delete(id); err != nil {
+		return err
+	}
 
 	return nil
 }

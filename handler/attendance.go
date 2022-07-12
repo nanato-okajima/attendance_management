@@ -6,9 +6,11 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+
 	l "github.com/nanato-okajima/attendance_management/logger"
 	"github.com/nanato-okajima/attendance_management/myerrors"
 	"github.com/nanato-okajima/attendance_management/service"
+	"github.com/nanato-okajima/attendance_management/service/repository"
 	"github.com/nanato-okajima/attendance_management/validator"
 )
 
@@ -17,9 +19,22 @@ type Request struct {
 	ClosingTime string `json:"closing_time" validate:"required,date_format_check"`
 }
 
-type AttendanceHandler struct{}
+type AttendanceHandler interface {
+	RegisterHandler(w http.ResponseWriter, r *http.Request)
+	ListHandler(w http.ResponseWriter, r *http.Request)
+	UpdateHandler(w http.ResponseWriter, r *http.Request)
+	DeleteHandler(w http.ResponseWriter, r *http.Request)
+}
 
-func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+type attendanceHandlerImplementation struct {
+	as service.AttendanceService
+}
+
+func NewAttendanceHandler(as service.AttendanceService) AttendanceHandler {
+	return &attendanceHandlerImplementation{as}
+}
+
+func (ahi attendanceHandlerImplementation) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errorHandler(w, &myerrors.BadRequestError{Err: err})
@@ -35,15 +50,15 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	attendance := createRecord(&req)
 
-	if err := service.Register(attendance); err != nil {
+	if err := ahi.as.Register(attendance); err != nil {
 		errorHandler(w, err)
 	}
 
 	createResponse(w, http.StatusCreated, "registered!")
 }
 
-func ListHandler(w http.ResponseWriter, r *http.Request) {
-	attendances, err := service.List()
+func (ahi attendanceHandlerImplementation) ListHandler(w http.ResponseWriter, r *http.Request) {
+	attendances, err := ahi.as.List()
 	if err != nil {
 		errorHandler(w, err)
 	}
@@ -63,7 +78,7 @@ func ListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UpdateHandler(w http.ResponseWriter, r *http.Request) {
+func (ahi attendanceHandlerImplementation) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errorHandler(w, &myerrors.BadRequestError{Err: err})
@@ -80,36 +95,20 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	attendance := createRecord(&req)
 
-	if err := service.Update(attendance, id); err != nil {
+	if err := ahi.as.Update(attendance, id); err != nil {
 		errorHandler(w, err)
 	}
 	createResponse(w, http.StatusOK, "updated!")
 }
 
-func DeleteHandler(w http.ResponseWriter, r *http.Request) {
-	var req Request
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errorHandler(w, &myerrors.BadRequestError{Err: err})
-		return
-	}
+func (ahi attendanceHandlerImplementation) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 
-	l.Logger.Infof("attendance register : {id: %s} : requests = {opening_time: %s, closing_time: %s}", id, req.OpeningTime, req.ClosingTime)
-
-	if err := validator.Validation(req); err != nil {
-		errorHandler(w, &myerrors.BadRequestError{Err: err})
-		return
-	}
-
-	if err := service.Delete(id); err != nil {
+	if err := ahi.as.Delete(id); err != nil {
 		errorHandler(w, err)
 	}
 
 	createResponse(w, http.StatusOK, "deleted!")
-}
-
-func NewAttendanceHandler() *AttendanceHandler {
-	return &AttendanceHandler{}
 }
 
 func errorHandler(w http.ResponseWriter, err error) {
@@ -126,8 +125,8 @@ func errorHandler(w http.ResponseWriter, err error) {
 	}
 }
 
-func createRecord(req *Request) *service.Attendance {
-	return &service.Attendance{
+func createRecord(req *Request) *repository.Attendance {
+	return &repository.Attendance{
 		EmployeeId:       1,
 		OpeningTime:      req.OpeningTime,
 		ClosingTime:      req.ClosingTime,
