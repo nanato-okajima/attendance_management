@@ -1,0 +1,80 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - misspell
+    - revive
+    - gosec
+    - unconvert
+    - goconst
+    - gocyclo
+    - dupl
+    - bodyclose
+    - nolintlint
+    - copyloopvar
+    - whitespace
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/nanato-okajima/attendance_management
+  
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+        disabled: false
+      - name: var-naming
+        severity: warning
+        disabled: false
+      - name: package-comments
+        severity: warning
+        disabled: true
+  
+  gocyclo:
+    min-complexity: 15
+  
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  
+  misspell:
+    locale: US
+
+issues:
+  exclude-dirs:
+    - tmp
+    - build/database/data
+  exclude-files:
+    - ".*\\.pb\\.go$"
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+    
+    # Exclude known linters from partially hard-vendored code
+    - path: vendor/
+      linters:
+        - all
+  
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true

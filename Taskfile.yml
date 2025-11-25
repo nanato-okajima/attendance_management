@@ -1,0 +1,27 @@
+version: '3'
+
+tasks:
+  up:
+    cmds:
+      - docker-compose up -d
+  down:
+    cmds:
+      - docker-compose down
+  logs:
+    cmds:
+      - docker-compose logs
+  reboot:
+    cmds:
+      - task down
+      - task up
+  ps:
+    cmds:
+      - docker-compose ps
+  lint:
+    desc: Run golangci-lint locally
+    cmds:
+      - golangci-lint run ./...
+  lint-docker:
+    desc: Run golangci-lint in Docker container
+    cmds:
+      - docker compose exec app golangci-lint run ./...
