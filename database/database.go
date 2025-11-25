@@ -3,46 +3,29 @@ package database
 import (
 	"fmt"
 
-	"github.com/kelseyhightower/envconfig"
+	"github.com/nanato-okajima/attendance_management/config"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-var DB DBCli
+var DB *gorm.DB
 
-const (
-	dsnFormat = "%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local"
-)
+func SetupDB(cfg *config.DatabaseConfig) error {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.User, cfg.Password, cfg.Host, cfg.Name)
 
-type DBEnv struct {
-	User     string
-	Password string
-	Host     string
-	Name     string
-}
-
-type DBCli struct {
-	Client *gorm.DB
-}
-
-func SetupDB() error {
-	var env DBEnv
-	err := envconfig.Process("db", &env)
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 	if err != nil {
 		return err
 	}
 
-	dsn := fmt.Sprintf(dsnFormat, env.User, env.Password, env.Host, env.Name)
-	client, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return err
-	}
-
-	DB = DBCli{client}
-
+	DB = db
 	return nil
 }
 
-func GetDBCli() DBCli {
+func GetDB() *gorm.DB {
 	return DB
 }
