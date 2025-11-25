@@ -1,8 +1,8 @@
 package repository
 
 type Attendance struct {
-	AttendanceId     int64  `json:"attendance_id"`
-	EmployeeId       int64  `json:"employee_id"`
+	AttendanceID     int64  `json:"attendance_id"`
+	EmployeeID       int64  `json:"employee_id"`
 	OpeningTime      string `json:"opening_time"`
 	ClosingTime      string `json:"closing_time"`
 	AttendanceStatus int64  `json:"attendance_status"`

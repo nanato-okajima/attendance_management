@@ -127,7 +127,7 @@ func errorHandler(w http.ResponseWriter, err error) {
 
 func createRecord(req *Request) *repository.Attendance {
 	return &repository.Attendance{
-		EmployeeId:       1,
+		EmployeeID:       1,
 		OpeningTime:      req.OpeningTime,
 		ClosingTime:      req.ClosingTime,
 		AttendanceStatus: 1,

@@ -3,10 +3,11 @@ package database
 import (
 	"fmt"
 
-	"github.com/nanato-okajima/attendance_management/config"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/nanato-okajima/attendance_management/config"
 )
 
 var DB *gorm.DB
