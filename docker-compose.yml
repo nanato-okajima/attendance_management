@@ -13,9 +13,12 @@ services:
       - 8080:8080
     depends_on:
       - db
+    networks:
+      - attendance_network
+
   db:
     container_name: 'attendance_db'
-    image: mysql:5.7-oracle
+    image: mysql:8.4.7
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: admin
@@ -26,3 +29,9 @@ services:
       - ./build/database/data:/var/lib/mysql
       - ./build/database/sql:/docker-entrypoint-initdb.d
       - ./build/database/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - attendance_network
+
+networks:
+  attendance_network:
+    driver: bridge
