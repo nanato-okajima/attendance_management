@@ -1,144 +1,118 @@
 package handler
 
 import (
-	"encoding/json"
-	"errors"
-	"net/http"
+	"strconv"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 
-	l "github.com/nanato-okajima/attendance_management/logger"
-	"github.com/nanato-okajima/attendance_management/myerrors"
 	"github.com/nanato-okajima/attendance_management/service"
-	"github.com/nanato-okajima/attendance_management/service/repository"
-	"github.com/nanato-okajima/attendance_management/validator"
 )
 
-type Request struct {
-	OpeningTime string `json:"opening_time" validate:"required,date_format_check"`
-	ClosingTime string `json:"closing_time" validate:"required,date_format_check"`
-}
-
 type AttendanceHandler interface {
-	RegisterHandler(w http.ResponseWriter, r *http.Request)
-	ListHandler(w http.ResponseWriter, r *http.Request)
-	UpdateHandler(w http.ResponseWriter, r *http.Request)
-	DeleteHandler(w http.ResponseWriter, r *http.Request)
+	ClockIn(c *gin.Context)
+	ClockOut(c *gin.Context)
+	GetToday(c *gin.Context)
+	GetMonthly(c *gin.Context)
 }
 
-type attendanceHandlerImplementation struct {
-	as service.AttendanceService
+type attendanceHandler struct {
+	attendanceService service.AttendanceService
 }
 
-func NewAttendanceHandler(as service.AttendanceService) AttendanceHandler {
-	return &attendanceHandlerImplementation{as}
+func NewAttendanceHandler(attendanceService service.AttendanceService) AttendanceHandler {
+	return &attendanceHandler{
+		attendanceService: attendanceService,
+	}
 }
 
-func (ahi attendanceHandlerImplementation) RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	var req Request
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errorHandler(w, &myerrors.BadRequestError{Err: err})
+type ClockRequest struct {
+	Latitude  *float64 `json:"latitude"`
+	Longitude *float64 `json:"longitude"`
+}
+
+func (h *attendanceHandler) ClockIn(c *gin.Context) {
+	employeeNumber := c.GetInt("employee_number")
+
+	var req ClockRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
 		return
 	}
 
-	l.Logger.Infof("attendance register : requests = {opening_time: %s, closing_time: %s}", req.OpeningTime, req.ClosingTime)
-
-	if err := validator.Validation(req); err != nil {
-		errorHandler(w, &myerrors.BadRequestError{Err: err})
-		return
-	}
-
-	attendance := createRecord(&req)
-
-	if err := ahi.as.Register(attendance); err != nil {
-		errorHandler(w, err)
-	}
-
-	createResponse(w, http.StatusCreated, "registered!")
-}
-
-func (ahi attendanceHandlerImplementation) ListHandler(w http.ResponseWriter, r *http.Request) {
-	attendances, err := ahi.as.List()
+	attendance, err := h.attendanceService.ClockIn(employeeNumber, req.Latitude, req.Longitude, 1)
 	if err != nil {
-		errorHandler(w, err)
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
 	}
 
-	e, err := json.Marshal(attendances)
+	c.JSON(201, gin.H{
+		"message":    "clocked in successfully",
+		"attendance": attendance,
+	})
+}
+
+func (h *attendanceHandler) ClockOut(c *gin.Context) {
+	employeeNumber := c.GetInt("employee_number")
+
+	var req ClockRequest
+	_ = c.ShouldBindJSON(&req)
+
+	attendance, err := h.attendanceService.ClockOut(employeeNumber, req.Latitude, req.Longitude)
 	if err != nil {
-		errorHandler(w, &myerrors.BadRequestError{Err: err})
+		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(e)
+	c.JSON(200, gin.H{
+		"message":    "clocked out successfully",
+		"attendance": attendance,
+	})
+}
+
+func (h *attendanceHandler) GetToday(c *gin.Context) {
+	employeeNumber := c.GetInt("employee_number")
+
+	attendance, err := h.attendanceService.GetTodayAttendance(employeeNumber)
 	if err != nil {
-		errorHandler(w, &myerrors.InternalServerError{Err: err})
-		return
-	}
-}
-
-func (ahi attendanceHandlerImplementation) UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	var req Request
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errorHandler(w, &myerrors.BadRequestError{Err: err})
-		return
-	}
-	id := mux.Vars(r)["id"]
-
-	l.Logger.Infof("attendance register : {id: %s} : requests = {opening_time: %s, closing_time: %s}", id, req.OpeningTime, req.ClosingTime)
-
-	if err := validator.Validation(req); err != nil {
-		errorHandler(w, &myerrors.BadRequestError{Err: err})
+		c.JSON(404, gin.H{"error": "no attendance record found"})
 		return
 	}
 
-	attendance := createRecord(&req)
-
-	if err := ahi.as.Update(attendance, id); err != nil {
-		errorHandler(w, err)
-	}
-	createResponse(w, http.StatusOK, "updated!")
+	c.JSON(200, attendance)
 }
 
-func (ahi attendanceHandlerImplementation) DeleteHandler(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["id"]
+func (h *attendanceHandler) GetMonthly(c *gin.Context) {
+	employeeNumber := c.GetInt("employee_number")
 
-	if err := ahi.as.Delete(id); err != nil {
-		errorHandler(w, err)
+	yearStr := c.Query("year")
+	monthStr := c.Query("month")
+
+	if yearStr == "" || monthStr == "" {
+		c.JSON(400, gin.H{"error": "year and month are required"})
+		return
 	}
 
-	createResponse(w, http.StatusOK, "deleted!")
-}
-
-func errorHandler(w http.ResponseWriter, err error) {
-	var br *myerrors.BadRequestError
-	if errors.As(err, &br) {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		l.Logger.Errorf("400 ", err)
+	year, err := strconv.Atoi(yearStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid year"})
+		return
 	}
 
-	var is *myerrors.InternalServerError
-	if errors.As(err, &is) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		l.Logger.Errorf("500 ", err)
+	month, err := strconv.Atoi(monthStr)
+	if err != nil || month < 1 || month > 12 {
+		c.JSON(400, gin.H{"error": "invalid month"})
+		return
 	}
-}
 
-func createRecord(req *Request) *repository.Attendance {
-	return &repository.Attendance{
-		EmployeeID:       1,
-		OpeningTime:      req.OpeningTime,
-		ClosingTime:      req.ClosingTime,
-		AttendanceStatus: 1,
+	attendances, err := h.attendanceService.GetMonthlyAttendances(employeeNumber, year, month)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to fetch attendances"})
+		return
 	}
-}
 
-func createResponse(w http.ResponseWriter, statusCode int, message string) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(statusCode)
-	m := map[string]string{"massage": message}
-	if err := json.NewEncoder(w).Encode(m); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	c.JSON(200, gin.H{
+		"year":        year,
+		"month":       month,
+		"attendances": attendances,
+	})
 }
