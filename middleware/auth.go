@@ -19,7 +19,14 @@ type Claims struct {
 }
 
 func GenerateToken(employeeNumber int, email, role string, cfg *config.JWTConfig) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+	// JWT_EXPIRATIONをパース（例: "24h", "1h30m"）
+	duration, err := time.ParseDuration(cfg.Expiration)
+	if err != nil {
+		// パースに失敗した場合はデフォルトで24時間
+		duration = 24 * time.Hour
+	}
+
+	expirationTime := time.Now().Add(duration)
 	claims := &Claims{
 		EmployeeNumber: employeeNumber,
 		Email:          email,
@@ -36,11 +43,9 @@ func GenerateToken(employeeNumber int, email, role string, cfg *config.JWTConfig
 
 func ParseToken(tokenString string, cfg *config.JWTConfig) (*Claims, error) {
 	claims := &Claims{}
-
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
 		return []byte(cfg.Secret), nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +68,6 @@ func AuthMiddleware(cfg *config.JWTConfig) gin.HandlerFunc {
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := ParseToken(tokenString, cfg)
-
 		if err != nil {
 			c.JSON(401, gin.H{"error": "invalid token"})
 			c.Abort()
