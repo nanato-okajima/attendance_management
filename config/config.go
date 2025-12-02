@@ -5,9 +5,10 @@ import (
 )
 
 type Config struct {
-	Database DatabaseConfig
-	JWT      JWTConfig
-	LINE     LINEConfig
+	Database  DatabaseConfig
+	JWT       JWTConfig
+	LINE      LINEConfig
+	WorkHours WorkHoursConfig
 }
 
 type DatabaseConfig struct {
@@ -25,6 +26,15 @@ type JWTConfig struct {
 type LINEConfig struct {
 	ChannelSecret string `envconfig:"LINE_CHANNEL_SECRET"`
 	ChannelToken  string `envconfig:"LINE_CHANNEL_TOKEN"`
+}
+
+type WorkHoursConfig struct {
+	StartHour         int     `envconfig:"WORK_START_HOUR" default:"9"`
+	StartMinute       int     `envconfig:"WORK_START_MINUTE" default:"0"`
+	EndHour           int     `envconfig:"WORK_END_HOUR" default:"18"`
+	EndMinute         int     `envconfig:"WORK_END_MINUTE" default:"0"`
+	BreakHours        float64 `envconfig:"BREAK_HOURS" default:"1"`
+	StandardWorkHours float64 `envconfig:"STANDARD_WORK_HOURS" default:"8"`
 }
 
 func Load() (*Config, error) {
