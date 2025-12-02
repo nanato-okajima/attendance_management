@@ -1,16 +1,16 @@
 package repository
 
-type Attendance struct {
-	AttendanceID     int64  `json:"attendance_id"`
-	EmployeeID       int64  `json:"employee_id"`
-	OpeningTime      string `json:"opening_time"`
-	ClosingTime      string `json:"closing_time"`
-	AttendanceStatus int64  `json:"attendance_status"`
-}
+//go:generate mockgen -source=attendance.go -destination=mock/mock_attendance_repository.go -package=mock
+
+import (
+	"time"
+
+	"github.com/nanato-okajima/attendance_management/models"
+)
 
 type AttendanceRepository interface {
-	Insert(attendance *Attendance) error
-	Fetch(attendances *[]Attendance) error
-	Update(attendance *Attendance, id string) error
-	Delete(id string) error
+	Create(attendance *models.Attendance) error
+	FindByEmployeeAndDate(employeeID int, date time.Time) (*models.Attendance, error)
+	Update(attendance *models.Attendance) error
+	FindByEmployeeAndDateRange(employeeID int, startDate, endDate time.Time) ([]models.Attendance, error)
 }
