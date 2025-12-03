@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/nanato-okajima/attendance_management/config"
-	"github.com/nanato-okajima/attendance_management/models"
+	"github.com/nanato-okajima/attendance_management/internal/config"
+	"github.com/nanato-okajima/attendance_management/internal/models"
 )
 
 // MockUserRepository is a mock implementation of UserRepository

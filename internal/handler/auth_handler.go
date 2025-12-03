@@ -3,8 +3,8 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/nanato-okajima/attendance_management/models"
-	"github.com/nanato-okajima/attendance_management/service"
+	"github.com/nanato-okajima/attendance_management/internal/models"
+	"github.com/nanato-okajima/attendance_management/internal/service"
 )
 
 type AuthHandler interface {

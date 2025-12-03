@@ -10,7 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/nanato-okajima/attendance_management/config"
+	"github.com/nanato-okajima/attendance_management/internal/config"
 )
 
 func TestGenerateToken(t *testing.T) {

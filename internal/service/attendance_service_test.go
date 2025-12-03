@@ -10,10 +10,10 @@ import (
 	"go.uber.org/mock/gomock"
 	"gorm.io/gorm"
 
-	"github.com/nanato-okajima/attendance_management/config"
-	"github.com/nanato-okajima/attendance_management/domain"
-	"github.com/nanato-okajima/attendance_management/models"
-	"github.com/nanato-okajima/attendance_management/service/repository/mock"
+	"github.com/nanato-okajima/attendance_management/internal/config"
+	"github.com/nanato-okajima/attendance_management/internal/domain"
+	"github.com/nanato-okajima/attendance_management/internal/domain/service/mock"
+	"github.com/nanato-okajima/attendance_management/internal/models"
 )
 
 func TestAttendanceService_ClockIn(t *testing.T) {

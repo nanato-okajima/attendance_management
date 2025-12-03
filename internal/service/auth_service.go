@@ -5,10 +5,10 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/nanato-okajima/attendance_management/config"
-	"github.com/nanato-okajima/attendance_management/middleware"
-	"github.com/nanato-okajima/attendance_management/models"
-	"github.com/nanato-okajima/attendance_management/service/repository"
+	"github.com/nanato-okajima/attendance_management/internal/config"
+	"github.com/nanato-okajima/attendance_management/internal/domain/service"
+	"github.com/nanato-okajima/attendance_management/internal/middleware"
+	"github.com/nanato-okajima/attendance_management/internal/models"
 )
 
 type AuthService interface {
@@ -17,11 +17,11 @@ type AuthService interface {
 }
 
 type authService struct {
-	userRepo repository.UserRepository
+	userRepo service.UserRepository
 	cfg      *config.Config
 }
 
-func NewAuthService(userRepo repository.UserRepository, cfg *config.Config) AuthService {
+func NewAuthService(userRepo service.UserRepository, cfg *config.Config) AuthService {
 	return &authService{
 		userRepo: userRepo,
 		cfg:      cfg,

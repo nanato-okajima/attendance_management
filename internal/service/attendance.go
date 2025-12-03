@@ -4,10 +4,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/nanato-okajima/attendance_management/config"
-	"github.com/nanato-okajima/attendance_management/domain"
-	"github.com/nanato-okajima/attendance_management/models"
-	"github.com/nanato-okajima/attendance_management/service/repository"
+	"github.com/nanato-okajima/attendance_management/internal/config"
+	"github.com/nanato-okajima/attendance_management/internal/domain"
+	"github.com/nanato-okajima/attendance_management/internal/domain/service"
+	"github.com/nanato-okajima/attendance_management/internal/models"
 	"gorm.io/gorm"
 )
 
@@ -19,12 +19,12 @@ type AttendanceService interface {
 }
 
 type attendanceService struct {
-	attendanceRepo  repository.AttendanceRepository
+	attendanceRepo  service.AttendanceRepository
 	workHoursConfig *config.WorkHoursConfig
 	timeProvider    TimeProvider
 }
 
-func NewAttendanceService(attendanceRepo repository.AttendanceRepository, workHoursConfig *config.WorkHoursConfig) AttendanceService {
+func NewAttendanceService(attendanceRepo service.AttendanceRepository, workHoursConfig *config.WorkHoursConfig) AttendanceService {
 	return &attendanceService{
 		attendanceRepo:  attendanceRepo,
 		workHoursConfig: workHoursConfig,
@@ -33,7 +33,7 @@ func NewAttendanceService(attendanceRepo repository.AttendanceRepository, workHo
 }
 
 // NewAttendanceServiceWithTimeProvider はテスト用にTimeProviderを注入できるコンストラクタ
-func NewAttendanceServiceWithTimeProvider(attendanceRepo repository.AttendanceRepository, workHoursConfig *config.WorkHoursConfig, timeProvider TimeProvider) AttendanceService {
+func NewAttendanceServiceWithTimeProvider(attendanceRepo service.AttendanceRepository, workHoursConfig *config.WorkHoursConfig, timeProvider TimeProvider) AttendanceService {
 	return &attendanceService{
 		attendanceRepo:  attendanceRepo,
 		workHoursConfig: workHoursConfig,

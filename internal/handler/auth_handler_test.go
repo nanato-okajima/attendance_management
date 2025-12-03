@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/nanato-okajima/attendance_management/models"
+	"github.com/nanato-okajima/attendance_management/internal/models"
 )
 
 // MockAuthService is a mock implementation of AuthService
