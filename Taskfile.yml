@@ -1,27 +1,133 @@
 version: '3'
 
 tasks:
+  # Docker管理コマンド
   up:
+    desc: Start all Docker containers
     cmds:
-      - docker-compose up -d
+      - docker compose up -d
+    silent: true
+
   down:
+    desc: Stop all Docker containers
     cmds:
-      - docker-compose down
+      - docker compose down
+    silent: true
+
+  restart:
+    desc: Restart all Docker containers
+    cmds:
+      - task: down
+      - task: up
+
   logs:
+    desc: Show Docker container logs
     cmds:
-      - docker-compose logs
-  reboot:
+      - docker compose logs -f --tail=100
+
+  logs-app:
+    desc: Show app container logs only
     cmds:
-      - task down
-      - task up
+      - docker compose logs -f --tail=100 app
+
   ps:
+    desc: Show running containers
     cmds:
-      - docker-compose ps
+      - docker compose ps
+
+  shell:
+    desc: Open shell in app container
+    cmds:
+      - docker compose exec app sh
+
+  # データベース管理コマンド
+  db-shell:
+    desc: Open MySQL shell
+    cmds:
+      - docker compose exec db mysql -uroot -padmin attendance_management
+
+  db-reset:
+    desc: Reset database (drop and recreate)
+    cmds:
+      - docker compose exec db mysql -uroot -padmin -e "DROP DATABASE IF EXISTS attendance_management; CREATE DATABASE attendance_management;"
+    prompt: This will delete all data. Are you sure?
+
+  # ビルド・クリーンコマンド
+  build:
+    desc: Build Go application in Docker
+    cmds:
+      - docker compose exec app go build -o bin/app .
+
+  clean:
+    desc: Clean generated files and build artifacts
+    cmds:
+      - rm -rf bin/
+      - rm -rf internal/mock/
+      - go clean -cache
+
+  # Lint・フォーマットコマンド
+  fmt:
+    desc: Format Go code
+    cmds:
+      - docker compose exec app go fmt ./...
+
   lint:
-    desc: Run golangci-lint locally
-    cmds:
-      - golangci-lint run ./...
-  lint-docker:
-    desc: Run golangci-lint in Docker container
+    desc: Run golangci-lint in Docker
     cmds:
       - docker compose exec app golangci-lint run ./...
+
+  lint-fix:
+    desc: Run golangci-lint with auto-fix
+    cmds:
+      - docker compose exec app golangci-lint run --fix ./...
+
+  # テストコマンド
+  generate-mocks:
+    desc: Generate all mock files
+    cmds:
+      - docker compose exec app go generate ./internal/domain/...
+
+  test:
+    desc: Run all tests with coverage in Docker
+    deps: [generate-mocks]
+    cmds:
+      - docker compose exec app go test -v -cover -count=1 ./internal/...
+
+  test-watch:
+    desc: Run tests in watch mode (requires entr)
+    cmds:
+      - find . -name '*.go' | entr -c task test
+
+  test-local:
+    desc: Run tests locally (requires local gomock)
+    cmds:
+      - ~/go/bin/mockgen -source=internal/domain/attendance_repository.go -destination=internal/mock/mock_attendance_repository.go -package=mock
+      - go test -v -cover -count=1 ./internal/...
+
+  test-coverage:
+    desc: Generate test coverage report
+    deps: [generate-mocks]
+    cmds:
+      - docker compose exec app go test ./internal/... -coverprofile=coverage.out
+      - docker compose exec app go tool cover -html=coverage.out -o coverage.html
+      - echo "Coverage report generated at coverage.html"
+
+  # 開発ワークフローコマンド
+  dev:
+    desc: Start development environment (up + logs)
+    cmds:
+      - task: up
+      - task: logs-app
+
+  check:
+    desc: Run all checks (fmt, lint, test)
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test
+
+  ci:
+    desc: Run CI checks (lint + test)
+    cmds:
+      - task: lint
+      - task: test
