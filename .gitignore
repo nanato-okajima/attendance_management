@@ -1,3 +1,5 @@
 tmp/
 build/database/data
 .env
+coverage.out
+coverage.html
