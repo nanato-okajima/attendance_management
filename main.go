@@ -1,11 +1,19 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/nanato-okajima/attendance_management/config"
-	"github.com/nanato-okajima/attendance_management/database"
-	"github.com/nanato-okajima/attendance_management/logger"
+	"github.com/nanato-okajima/attendance_management/internal/config"
+	"github.com/nanato-okajima/attendance_management/internal/logger"
+	"github.com/nanato-okajima/attendance_management/internal/repository/database"
+	"github.com/nanato-okajima/attendance_management/internal/router"
 )
 
 func main() {
@@ -28,12 +36,41 @@ func main() {
 	}
 
 	// ルーター設定
-	router := setupRouter(cfg)
+	r := router.Setup(cfg)
 
-	// サーバー起動
-	logger.Info("Server starting on :8080")
-	if err := router.Run(":8080"); err != nil {
-		logger.Error("Failed to start server:", err)
+	// HTTPサーバー設定
+	srv := &http.Server{
+		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
+		Handler:      r,
+		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+	}
+
+	// サーバーを別ゴルーチンで起動
+	go func() {
+		logger.Info("Starting server", "port", cfg.Server.Port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("Server error:", err)
+			log.Fatal(err)
+		}
+	}()
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("Shutting down server...")
+
+	// シャットダウンタイムアウト設定
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Server.ShutdownTimeout)*time.Second)
+	defer cancel()
+
+	// 処理中のリクエストを完了してからシャットダウン
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Error("Server forced to shutdown:", err)
 		log.Fatal(err)
 	}
+
+	logger.Info("Server exited")
 }
