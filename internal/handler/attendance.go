@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/nanato-okajima/attendance_management/internal/errors"
 	"github.com/nanato-okajima/attendance_management/internal/service"
 )
 
@@ -41,7 +42,7 @@ func (h *attendanceHandler) ClockIn(c *gin.Context) {
 
 	attendance, err := h.attendanceService.ClockIn(employeeNumber, req.Latitude, req.Longitude, 1)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		errors.HandleError(c, err)
 		return
 	}
 
@@ -59,7 +60,7 @@ func (h *attendanceHandler) ClockOut(c *gin.Context) {
 
 	attendance, err := h.attendanceService.ClockOut(employeeNumber, req.Latitude, req.Longitude)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		errors.HandleError(c, err)
 		return
 	}
 

@@ -3,7 +3,8 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/nanato-okajima/attendance_management/internal/models"
+	"github.com/nanato-okajima/attendance_management/internal/entity"
+	"github.com/nanato-okajima/attendance_management/internal/errors"
 	"github.com/nanato-okajima/attendance_management/internal/service"
 )
 
@@ -43,7 +44,7 @@ func (h *authHandler) Login(c *gin.Context) {
 
 	token, user, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
-		c.JSON(401, gin.H{"error": "invalid credentials"})
+		errors.HandleError(c, err)
 		return
 	}
 
@@ -66,14 +67,14 @@ func (h *authHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user := &models.User{
+	user := &entity.User{
 		EmployeeNumber: req.EmployeeNumber,
 		Email:          req.Email,
 		Role:           req.Role,
 	}
 
 	if err := h.authService.Register(user, req.Password); err != nil {
-		c.JSON(500, gin.H{"error": "failed to register user"})
+		errors.HandleError(c, err)
 		return
 	}
 
