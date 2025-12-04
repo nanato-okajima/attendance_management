@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"runtime/debug"
 
@@ -19,7 +18,7 @@ func Recovery() gin.HandlerFunc {
 					"error", err,
 					"path", c.Request.URL.Path,
 					"method", c.Request.Method,
-					"stack", fmt.Sprintf("%s", debug.Stack()),
+					"stack", string(debug.Stack()),
 				)
 
 				c.JSON(http.StatusInternalServerError, gin.H{

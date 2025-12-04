@@ -3,6 +3,8 @@ package attendance
 import "time"
 
 // AttendanceStatus は勤怠記録のステータスを表す
+//
+//nolint:revive // Explicit naming preferred for clarity
 type AttendanceStatus int
 
 const (

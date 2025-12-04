@@ -6,9 +6,9 @@ type ErrorCode string
 const (
 	// 認証関連エラー
 	ErrCodeUnauthorized       ErrorCode = "AUTH_001"
-	ErrCodeInvalidToken       ErrorCode = "AUTH_002"
-	ErrCodeExpiredToken       ErrorCode = "AUTH_003"
-	ErrCodeInvalidCredentials ErrorCode = "AUTH_004"
+	ErrCodeInvalidToken       ErrorCode = "AUTH_002" //nolint:gosec // This is an error code, not a credential
+	ErrCodeExpiredToken       ErrorCode = "AUTH_003" //nolint:gosec // This is an error code, not a credential
+	ErrCodeInvalidCredentials ErrorCode = "AUTH_004" //nolint:gosec // This is an error code, not a credential
 
 	// 勤怠関連エラー
 	ErrCodeAlreadyClockedIn  ErrorCode = "ATT_001"
