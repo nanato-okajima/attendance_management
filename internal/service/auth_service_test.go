@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/nanato-okajima/attendance_management/internal/config"
-	"github.com/nanato-okajima/attendance_management/internal/models"
+	"github.com/nanato-okajima/attendance_management/internal/entity"
 )
 
 // MockUserRepository is a mock implementation of UserRepository
@@ -17,25 +17,25 @@ type MockUserRepository struct {
 	mock.Mock
 }
 
-func (m *MockUserRepository) Create(user *models.User) error {
+func (m *MockUserRepository) Create(user *entity.User) error {
 	args := m.Called(user)
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) FindByEmail(email string) (*models.User, error) {
+func (m *MockUserRepository) FindByEmail(email string) (*entity.User, error) {
 	args := m.Called(email)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.User), args.Error(1)
+	return args.Get(0).(*entity.User), args.Error(1)
 }
 
-func (m *MockUserRepository) FindByEmployeeNumber(employeeNumber int) (*models.User, error) {
+func (m *MockUserRepository) FindByEmployeeNumber(employeeNumber int) (*entity.User, error) {
 	args := m.Called(employeeNumber)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.User), args.Error(1)
+	return args.Get(0).(*entity.User), args.Error(1)
 }
 
 func (m *MockUserRepository) UpdateLastLogin(id uint) error {
@@ -70,7 +70,7 @@ func TestAuthService_Login(t *testing.T) {
 			email:    "test@example.com",
 			password: password,
 			setupMock: func(mockRepo *MockUserRepository) {
-				expectedUser := &models.User{
+				expectedUser := &entity.User{
 					ID:             1,
 					EmployeeNumber: 1,
 					Email:          "test@example.com",
@@ -93,7 +93,7 @@ func TestAuthService_Login(t *testing.T) {
 				mockRepo.On("FindByEmail", "wrong@example.com").Return(nil, errors.New("user not found"))
 			},
 			hasError:      true,
-			expectedError: "invalid credentials",
+			expectedError: "[AUTH_004] Invalid credentials",
 			checkToken:    false,
 			checkUser:     false,
 		},
@@ -102,7 +102,7 @@ func TestAuthService_Login(t *testing.T) {
 			email:    "test@example.com",
 			password: "wrongpassword",
 			setupMock: func(mockRepo *MockUserRepository) {
-				expectedUser := &models.User{
+				expectedUser := &entity.User{
 					ID:             1,
 					EmployeeNumber: 1,
 					Email:          "test@example.com",
@@ -113,7 +113,7 @@ func TestAuthService_Login(t *testing.T) {
 				mockRepo.On("FindByEmail", "test@example.com").Return(expectedUser, nil)
 			},
 			hasError:      true,
-			expectedError: "invalid credentials",
+			expectedError: "[AUTH_004] Invalid credentials",
 			checkToken:    false,
 			checkUser:     false,
 		},
@@ -159,7 +159,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		user          *models.User
+		user          *entity.User
 		password      string
 		setupMock     func(*MockUserRepository)
 		hasError      bool
@@ -168,28 +168,28 @@ func TestAuthService_Register(t *testing.T) {
 	}{
 		{
 			name: "登録成功",
-			user: &models.User{
+			user: &entity.User{
 				EmployeeNumber: 1,
 				Email:          "test@example.com",
 				Role:           "employee",
 			},
 			password: "password123",
 			setupMock: func(mockRepo *MockUserRepository) {
-				mockRepo.On("Create", mock.AnythingOfType("*models.User")).Return(nil)
+				mockRepo.On("Create", mock.AnythingOfType("*entity.User")).Return(nil)
 			},
 			hasError:      false,
 			checkPassword: true,
 		},
 		{
 			name: "リポジトリエラー",
-			user: &models.User{
+			user: &entity.User{
 				EmployeeNumber: 1,
 				Email:          "test@example.com",
 				Role:           "employee",
 			},
 			password: "password123",
 			setupMock: func(mockRepo *MockUserRepository) {
-				mockRepo.On("Create", mock.AnythingOfType("*models.User")).Return(errors.New("database error"))
+				mockRepo.On("Create", mock.AnythingOfType("*entity.User")).Return(errors.New("database error"))
 			},
 			hasError:      true,
 			expectedError: "database error",

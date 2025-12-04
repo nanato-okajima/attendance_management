@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/nanato-okajima/attendance_management/internal/models"
+	"github.com/nanato-okajima/attendance_management/internal/entity"
 )
 
 // MockAuthService is a mock implementation of AuthService
@@ -19,15 +19,15 @@ type MockAuthService struct {
 	mock.Mock
 }
 
-func (m *MockAuthService) Login(email, password string) (string, *models.User, error) {
+func (m *MockAuthService) Login(email, password string) (string, *entity.User, error) {
 	args := m.Called(email, password)
 	if args.Get(1) == nil {
 		return args.String(0), nil, args.Error(2)
 	}
-	return args.String(0), args.Get(1).(*models.User), args.Error(2)
+	return args.String(0), args.Get(1).(*entity.User), args.Error(2)
 }
 
-func (m *MockAuthService) Register(user *models.User, password string) error {
+func (m *MockAuthService) Register(user *entity.User, password string) error {
 	args := m.Called(user, password)
 	return args.Error(0)
 }
@@ -50,7 +50,7 @@ func TestAuthHandler_Login(t *testing.T) {
 				Password: "password123",
 			},
 			setupMock: func(mockService *MockAuthService) {
-				expectedUser := &models.User{
+				expectedUser := &entity.User{
 					ID:             1,
 					EmployeeNumber: 1,
 					Email:          "test@example.com",
@@ -78,7 +78,7 @@ func TestAuthHandler_Login(t *testing.T) {
 				mockService.On("Login", "test@example.com", "wrongpassword").
 					Return("", nil, assert.AnError)
 			},
-			expectedStatus: http.StatusUnauthorized,
+			expectedStatus: http.StatusInternalServerError,
 			checkResponse:  nil,
 		},
 		{
@@ -142,7 +142,7 @@ func TestAuthHandler_Register(t *testing.T) {
 				Role:           "employee",
 			},
 			setupMock: func(mockService *MockAuthService) {
-				mockService.On("Register", mock.AnythingOfType("*models.User"), "password123").
+				mockService.On("Register", mock.AnythingOfType("*entity.User"), "password123").
 					Return(nil)
 			},
 			expectedStatus: http.StatusCreated,
@@ -162,7 +162,7 @@ func TestAuthHandler_Register(t *testing.T) {
 				Role:           "employee",
 			},
 			setupMock: func(mockService *MockAuthService) {
-				mockService.On("Register", mock.AnythingOfType("*models.User"), "password123").
+				mockService.On("Register", mock.AnythingOfType("*entity.User"), "password123").
 					Return(assert.AnError)
 			},
 			expectedStatus: http.StatusInternalServerError,

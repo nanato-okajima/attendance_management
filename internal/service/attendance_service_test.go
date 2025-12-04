@@ -11,9 +11,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/nanato-okajima/attendance_management/internal/config"
-	"github.com/nanato-okajima/attendance_management/internal/domain"
-	"github.com/nanato-okajima/attendance_management/internal/domain/service/mock"
-	"github.com/nanato-okajima/attendance_management/internal/models"
+	"github.com/nanato-okajima/attendance_management/internal/domain/attendance"
+	"github.com/nanato-okajima/attendance_management/internal/entity"
+	"github.com/nanato-okajima/attendance_management/internal/mock"
 )
 
 func TestAttendanceService_ClockIn(t *testing.T) {
@@ -46,7 +46,7 @@ func TestAttendanceService_ClockIn(t *testing.T) {
 		param         param
 		setupMock     func(*mock.MockAttendanceRepository)
 		hasError      bool
-		expected      *models.Attendance
+		expected      *entity.Attendance
 		expectedError error
 	}{
 		{
@@ -61,11 +61,11 @@ func TestAttendanceService_ClockIn(t *testing.T) {
 				mockRepo.EXPECT().FindByEmployeeAndDate(1, todayDate).Return(nil, gorm.ErrRecordNotFound)
 				mockRepo.EXPECT().Create(gomock.Any()).Return(nil)
 			},
-			expected: &models.Attendance{
+			expected: &entity.Attendance{
 				EmployeeID:       1,
 				TargetDate:       todayDate,
 				OpeningTime:      lo.ToPtr(fixedTime),
-				AttendanceStatus: int(domain.AttendanceStatusNormal),
+				AttendanceStatus: int(attendance.StatusNormal),
 				ClockSource:      1,
 				Latitude:         &latitude,
 				Longitude:        &longitude,
@@ -81,7 +81,7 @@ func TestAttendanceService_ClockIn(t *testing.T) {
 				clockSource: 1,
 			},
 			setupMock: func(mockRepo *mock.MockAttendanceRepository) {
-				existingAttendance := &models.Attendance{
+				existingAttendance := &entity.Attendance{
 					AttendanceID: 10,
 					EmployeeID:   1,
 					TargetDate:   todayDate,
@@ -90,12 +90,12 @@ func TestAttendanceService_ClockIn(t *testing.T) {
 				mockRepo.EXPECT().FindByEmployeeAndDate(1, todayDate).Return(existingAttendance, nil)
 				mockRepo.EXPECT().Update(gomock.Any()).Return(nil)
 			},
-			expected: &models.Attendance{
+			expected: &entity.Attendance{
 				AttendanceID:     10,
 				EmployeeID:       1,
 				TargetDate:       todayDate,
 				OpeningTime:      lo.ToPtr(fixedTime),
-				AttendanceStatus: int(domain.AttendanceStatusNormal),
+				AttendanceStatus: int(attendance.StatusNormal),
 				ClockSource:      1,
 				Latitude:         &latitude,
 				Longitude:        &longitude,
@@ -111,7 +111,7 @@ func TestAttendanceService_ClockIn(t *testing.T) {
 				clockSource: 1,
 			},
 			setupMock: func(mockRepo *mock.MockAttendanceRepository) {
-				existingAttendance := &models.Attendance{
+				existingAttendance := &entity.Attendance{
 					AttendanceID: 1,
 					EmployeeID:   1,
 					OpeningTime:  &fixedTime,
@@ -119,7 +119,7 @@ func TestAttendanceService_ClockIn(t *testing.T) {
 				mockRepo.EXPECT().FindByEmployeeAndDate(1, todayDate).Return(existingAttendance, nil)
 			},
 			hasError:      true,
-			expectedError: errors.New("already clocked in today"),
+			expectedError: errors.New("[ATT_001] Already clocked in today"),
 		},
 	}
 
@@ -138,7 +138,9 @@ func TestAttendanceService_ClockIn(t *testing.T) {
 			if tt.hasError {
 				assert.Error(t, err)
 				assert.Nil(t, got)
-				assert.Equal(t, tt.expectedError, err)
+				// if tt.expectedError != nil {
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				// }
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expected, got)
@@ -184,12 +186,12 @@ func TestAttendanceService_ClockOut(t *testing.T) {
 			},
 			setupMock: func(mockRepo *mock.MockAttendanceRepository) {
 				openingTime := time.Date(2025, 12, 1, 9, 0, 0, 0, time.Local)
-				existingAttendance := &models.Attendance{
+				existingAttendance := &entity.Attendance{
 					AttendanceID:     1,
 					EmployeeID:       1,
 					OpeningTime:      &openingTime,
 					ClosingTime:      nil,
-					AttendanceStatus: int(domain.AttendanceStatusNormal),
+					AttendanceStatus: int(attendance.StatusNormal),
 				}
 				mockRepo.EXPECT().
 					FindByEmployeeAndDate(1, time.Date(2025, 12, 1, 0, 0, 0, 0, time.Local)).
@@ -213,7 +215,7 @@ func TestAttendanceService_ClockOut(t *testing.T) {
 					Return(nil, errors.New("not found"))
 			},
 			hasError:      true,
-			expectedError: "no clock-in record found",
+			expectedError: "[ATT_002] No clock-in record found",
 		},
 		{
 			name: "既に退勤報告済み",
@@ -225,7 +227,7 @@ func TestAttendanceService_ClockOut(t *testing.T) {
 			setupMock: func(mockRepo *mock.MockAttendanceRepository) {
 				openingTime := time.Date(2025, 12, 1, 9, 0, 0, 0, time.Local)
 				closingTime := time.Date(2025, 12, 1, 17, 0, 0, 0, time.Local)
-				existingAttendance := &models.Attendance{
+				existingAttendance := &entity.Attendance{
 					AttendanceID: 1,
 					EmployeeID:   1,
 					OpeningTime:  &openingTime,
@@ -236,7 +238,7 @@ func TestAttendanceService_ClockOut(t *testing.T) {
 					Return(existingAttendance, nil)
 			},
 			hasError:      true,
-			expectedError: "already clocked out",
+			expectedError: "[ATT_003] Already clocked out",
 		},
 	}
 
@@ -287,13 +289,13 @@ func TestAttendanceService_GetTodayAttendance(t *testing.T) {
 		employeeID         int
 		setupMock          func(*mock.MockAttendanceRepository)
 		hasError           bool
-		expectedAttendance *models.Attendance
+		expectedAttendance *entity.Attendance
 	}{
 		{
 			name:       "Success",
 			employeeID: 1,
 			setupMock: func(mockRepo *mock.MockAttendanceRepository) {
-				expectedAttendance := &models.Attendance{
+				expectedAttendance := &entity.Attendance{
 					AttendanceID: 1,
 					EmployeeID:   1,
 					OpeningTime:  &fixedTime,
@@ -301,7 +303,7 @@ func TestAttendanceService_GetTodayAttendance(t *testing.T) {
 				mockRepo.EXPECT().FindByEmployeeAndDate(1, todayDate).Return(expectedAttendance, nil)
 			},
 			hasError: false,
-			expectedAttendance: &models.Attendance{
+			expectedAttendance: &entity.Attendance{
 				AttendanceID: 1,
 				EmployeeID:   1,
 				OpeningTime:  &fixedTime,
@@ -360,7 +362,7 @@ func TestAttendanceService_GetMonthlyAttendances(t *testing.T) {
 		setupMock           func(*mock.MockAttendanceRepository)
 		hasError            bool
 		expectedCount       int
-		expectedAttendances []models.Attendance
+		expectedAttendances []entity.Attendance
 	}{
 		{
 			name:       "Success",
@@ -368,7 +370,7 @@ func TestAttendanceService_GetMonthlyAttendances(t *testing.T) {
 			year:       2025,
 			month:      11,
 			setupMock: func(mockRepo *mock.MockAttendanceRepository) {
-				expectedAttendances := []models.Attendance{
+				expectedAttendances := []entity.Attendance{
 					{AttendanceID: 1, EmployeeID: 1},
 					{AttendanceID: 2, EmployeeID: 1},
 				}
@@ -383,7 +385,7 @@ func TestAttendanceService_GetMonthlyAttendances(t *testing.T) {
 			year:       2025,
 			month:      12,
 			setupMock: func(mockRepo *mock.MockAttendanceRepository) {
-				mockRepo.EXPECT().FindByEmployeeAndDateRange(1, gomock.Any(), gomock.Any()).Return([]models.Attendance{}, nil)
+				mockRepo.EXPECT().FindByEmployeeAndDateRange(1, gomock.Any(), gomock.Any()).Return([]entity.Attendance{}, nil)
 			},
 			hasError:      false,
 			expectedCount: 0,
