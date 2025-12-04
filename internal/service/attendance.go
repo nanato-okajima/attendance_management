@@ -1,30 +1,30 @@
 package service
 
 import (
-	"errors"
 	"time"
 
-	"github.com/nanato-okajima/attendance_management/internal/config"
-	"github.com/nanato-okajima/attendance_management/internal/domain"
-	"github.com/nanato-okajima/attendance_management/internal/domain/service"
-	"github.com/nanato-okajima/attendance_management/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/nanato-okajima/attendance_management/internal/config"
+	"github.com/nanato-okajima/attendance_management/internal/domain/attendance"
+	"github.com/nanato-okajima/attendance_management/internal/entity"
+	"github.com/nanato-okajima/attendance_management/internal/errors"
 )
 
 type AttendanceService interface {
-	ClockIn(employeeID int, latitude, longitude *float64, clockSource int) (*models.Attendance, error)
-	ClockOut(employeeID int, latitude, longitude *float64) (*models.Attendance, error)
-	GetTodayAttendance(employeeID int) (*models.Attendance, error)
-	GetMonthlyAttendances(employeeID int, year, month int) ([]models.Attendance, error)
+	ClockIn(employeeID int, latitude, longitude *float64, clockSource int) (*entity.Attendance, error)
+	ClockOut(employeeID int, latitude, longitude *float64) (*entity.Attendance, error)
+	GetTodayAttendance(employeeID int) (*entity.Attendance, error)
+	GetMonthlyAttendances(employeeID int, year, month int) ([]entity.Attendance, error)
 }
 
 type attendanceService struct {
-	attendanceRepo  service.AttendanceRepository
+	attendanceRepo  attendance.Repository
 	workHoursConfig *config.WorkHoursConfig
 	timeProvider    TimeProvider
 }
 
-func NewAttendanceService(attendanceRepo service.AttendanceRepository, workHoursConfig *config.WorkHoursConfig) AttendanceService {
+func NewAttendanceService(attendanceRepo attendance.Repository, workHoursConfig *config.WorkHoursConfig) AttendanceService {
 	return &attendanceService{
 		attendanceRepo:  attendanceRepo,
 		workHoursConfig: workHoursConfig,
@@ -33,7 +33,7 @@ func NewAttendanceService(attendanceRepo service.AttendanceRepository, workHours
 }
 
 // NewAttendanceServiceWithTimeProvider はテスト用にTimeProviderを注入できるコンストラクタ
-func NewAttendanceServiceWithTimeProvider(attendanceRepo service.AttendanceRepository, workHoursConfig *config.WorkHoursConfig, timeProvider TimeProvider) AttendanceService {
+func NewAttendanceServiceWithTimeProvider(attendanceRepo attendance.Repository, workHoursConfig *config.WorkHoursConfig, timeProvider TimeProvider) AttendanceService {
 	return &attendanceService{
 		attendanceRepo:  attendanceRepo,
 		workHoursConfig: workHoursConfig,
@@ -41,7 +41,7 @@ func NewAttendanceServiceWithTimeProvider(attendanceRepo service.AttendanceRepos
 	}
 }
 
-func (s *attendanceService) ClockIn(employeeID int, latitude, longitude *float64, clockSource int) (*models.Attendance, error) {
+func (s *attendanceService) ClockIn(employeeID int, latitude, longitude *float64, clockSource int) (*entity.Attendance, error) {
 	today := s.timeProvider.Now()
 	todayDate := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
 
@@ -51,16 +51,16 @@ func (s *attendanceService) ClockIn(employeeID int, latitude, longitude *float64
 		return nil, err
 	}
 	if existing != nil && existing.OpeningTime != nil {
-		return nil, errors.New("already clocked in today")
+		return nil, errors.New(errors.ErrCodeAlreadyClockedIn, "Already clocked in today")
 	}
 
-	attendanceStatus := int(domain.DetermineClockInStatus(
+	attendanceStatus := int(attendance.DetermineClockInStatus(
 		today,
 		s.workHoursConfig.StartHour,
 		s.workHoursConfig.StartMinute,
 	))
 
-	attendance := &models.Attendance{
+	attendance := &entity.Attendance{
 		EmployeeID:       employeeID,
 		TargetDate:       todayDate,
 		OpeningTime:      &today,
@@ -86,68 +86,68 @@ func (s *attendanceService) ClockIn(employeeID int, latitude, longitude *float64
 	return attendance, nil
 }
 
-func (s *attendanceService) ClockOut(employeeID int, latitude, longitude *float64) (*models.Attendance, error) {
+func (s *attendanceService) ClockOut(employeeID int, latitude, longitude *float64) (*entity.Attendance, error) {
 	today := s.timeProvider.Now()
 	todayDate := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
 
-	attendance, err := s.attendanceRepo.FindByEmployeeAndDate(employeeID, todayDate)
+	record, err := s.attendanceRepo.FindByEmployeeAndDate(employeeID, todayDate)
 	if err != nil {
-		return nil, errors.New("no clock-in record found")
+		return nil, errors.New(errors.ErrCodeNotClockedIn, "No clock-in record found")
 	}
 
-	if attendance.ClosingTime != nil {
-		return nil, errors.New("already clocked out")
+	if record.ClosingTime != nil {
+		return nil, errors.New(errors.ErrCodeAlreadyClockedOut, "Already clocked out")
 	}
 
-	attendance.ClosingTime = &today
+	record.ClosingTime = &today
 
 	if latitude != nil {
-		attendance.Latitude = latitude
+		record.Latitude = latitude
 	}
 	if longitude != nil {
-		attendance.Longitude = longitude
+		record.Longitude = longitude
 	}
 
 	// 勤務時間計算
-	if attendance.OpeningTime != nil {
-		calculator := domain.WorkHoursCalculator{
+	if record.OpeningTime != nil {
+		calculator := &attendance.WorkHoursCalculator{
 			BreakHours:        s.workHoursConfig.BreakHours,
 			StandardWorkHours: s.workHoursConfig.StandardWorkHours,
 		}
 
-		workHours := calculator.CalculateWorkHours(*attendance.OpeningTime, today)
-		attendance.WorkHours = &workHours
+		workHours := calculator.CalculateWorkHours(*record.OpeningTime, today)
+		record.WorkHours = &workHours
 
 		overtimeHours := calculator.CalculateOvertimeHours(workHours)
 		if overtimeHours > 0 {
-			attendance.OvertimeHours = &overtimeHours
+			record.OvertimeHours = &overtimeHours
 		}
 	}
 
 	// 早退判定
-	if domain.ShouldUpdateToEarlyLeave(
+	if attendance.ShouldUpdateToEarlyLeave(
 		today,
-		domain.AttendanceStatus(attendance.AttendanceStatus),
+		attendance.AttendanceStatus(record.AttendanceStatus),
 		s.workHoursConfig.EndHour,
 		s.workHoursConfig.EndMinute,
 	) {
-		attendance.AttendanceStatus = int(domain.AttendanceStatusEarlyLeave)
+		record.AttendanceStatus = int(attendance.StatusEarlyLeave)
 	}
 
-	if err := s.attendanceRepo.Update(attendance); err != nil {
+	if err := s.attendanceRepo.Update(record); err != nil {
 		return nil, err
 	}
 
-	return attendance, nil
+	return record, nil
 }
 
-func (s *attendanceService) GetTodayAttendance(employeeID int) (*models.Attendance, error) {
+func (s *attendanceService) GetTodayAttendance(employeeID int) (*entity.Attendance, error) {
 	today := s.timeProvider.Now()
 	todayDate := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.Local)
 	return s.attendanceRepo.FindByEmployeeAndDate(employeeID, todayDate)
 }
 
-func (s *attendanceService) GetMonthlyAttendances(employeeID int, year, month int) ([]models.Attendance, error) {
+func (s *attendanceService) GetMonthlyAttendances(employeeID int, year, month int) ([]entity.Attendance, error) {
 	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
 	endDate := startDate.AddDate(0, 1, -1)
 	return s.attendanceRepo.FindByEmployeeAndDateRange(employeeID, startDate, endDate)
