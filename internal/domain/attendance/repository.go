@@ -11,6 +11,7 @@ import (
 // Repository はAttendanceエンティティの永続化を抽象化
 type Repository interface {
 	Create(attendance *entity.Attendance) error
+	FindByID(id uint) (*entity.Attendance, error)
 	FindByEmployeeAndDate(employeeID int, date time.Time) (*entity.Attendance, error)
 	Update(attendance *entity.Attendance) error
 	FindByEmployeeAndDateRange(employeeID int, startDate, endDate time.Time) ([]entity.Attendance, error)

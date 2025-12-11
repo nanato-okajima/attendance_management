@@ -17,6 +17,12 @@ func (r *attendanceRepository) Create(attendance *entity.Attendance) error {
 	return DB.Create(attendance).Error
 }
 
+func (r *attendanceRepository) FindByID(id uint) (*entity.Attendance, error) {
+	var attendance entity.Attendance
+	err := DB.First(&attendance, id).Error
+	return &attendance, err
+}
+
 func (r *attendanceRepository) FindByEmployeeAndDate(employeeID int, date time.Time) (*entity.Attendance, error) {
 	var attendance entity.Attendance
 	err := DB.Where("employee_id = ? AND target_date = ?", employeeID, date.Format("2006-01-02")).First(&attendance).Error

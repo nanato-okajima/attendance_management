@@ -85,6 +85,21 @@ func (mr *MockAttendanceRepositoryMockRecorder) FindByEmployeeAndDateRange(emplo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByEmployeeAndDateRange", reflect.TypeOf((*MockAttendanceRepository)(nil).FindByEmployeeAndDateRange), employeeID, startDate, endDate)
 }
 
+// FindByID mocks base method.
+func (m *MockAttendanceRepository) FindByID(id uint) (*entity.Attendance, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByID", id)
+	ret0, _ := ret[0].(*entity.Attendance)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByID indicates an expected call of FindByID.
+func (mr *MockAttendanceRepositoryMockRecorder) FindByID(id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockAttendanceRepository)(nil).FindByID), id)
+}
+
 // Update mocks base method.
 func (m *MockAttendanceRepository) Update(attendance *entity.Attendance) error {
 	m.ctrl.T.Helper()
