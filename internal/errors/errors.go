@@ -37,3 +37,20 @@ func Wrap(code ErrorCode, message string, err error) *AppError {
 		Err:     err,
 	}
 }
+
+// NewDBError はデータベースエラーを作成
+func NewDBError(code ErrorCode, err error) *AppError {
+	return &AppError{
+		Code:    code,
+		Message: "database error",
+		Err:     err,
+	}
+}
+
+// NewValidationError はバリデーションエラーを作成
+func NewValidationError(message string) *AppError {
+	return &AppError{
+		Code:    ErrCodeValidation,
+		Message: message,
+	}
+}

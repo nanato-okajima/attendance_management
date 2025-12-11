@@ -22,8 +22,12 @@ const (
 
 	// データベースエラー
 	ErrCodeNotFound      ErrorCode = "DB_001"
+	DBErrorNotFound      ErrorCode = "DB_001" // Alias for ErrCodeNotFound
 	ErrCodeDuplicate     ErrorCode = "DB_002"
 	ErrCodeDatabaseError ErrorCode = "DB_003"
+	DBErrorCreate        ErrorCode = "DB_004"
+	DBErrorUpdate        ErrorCode = "DB_005"
+	DBErrorQuery         ErrorCode = "DB_006"
 
 	// 一般エラー
 	ErrCodeInternal   ErrorCode = "INT_001"
