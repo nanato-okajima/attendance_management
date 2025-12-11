@@ -19,16 +19,26 @@ func Setup(cfg *config.Config) *gin.Engine {
 	r.Use(middleware.CORS())          // CORS設定
 
 	// リポジトリ初期化
+	db := database.GetDB()
 	userRepo := database.NewUserRepository()
 	attendanceRepo := database.NewAttendanceRepository()
+	leaveRepo := database.NewLeaveRepository(db)
+	correctionRepo := database.NewCorrectionRepository(db)
 
 	// サービス初期化
 	authService := service.NewAuthService(userRepo, cfg)
 	attendanceService := service.NewAttendanceService(attendanceRepo, &cfg.WorkHours)
+	notificationService := service.NewNotificationService()
+	leaveService := service.NewLeaveService(leaveRepo)
+	correctionService := service.NewAttendanceCorrectionService(correctionRepo, attendanceRepo, notificationService)
+	approvalService := service.NewApprovalService(leaveRepo, notificationService)
 
 	// ハンドラー初期化
 	authHandler := handler.NewAuthHandler(authService)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
+	leaveHandler := handler.NewLeaveHandler(leaveService)
+	correctionHandler := handler.NewAttendanceCorrectionHandler(correctionService)
+	approvalHandler := handler.NewApprovalHandler(approvalService, correctionService)
 
 	// ヘルスチェック
 	r.GET("/health", func(c *gin.Context) {
@@ -45,14 +55,45 @@ func Setup(cfg *config.Config) *gin.Engine {
 			auth.POST("/register", authHandler.Register)
 		}
 
-		// 勤怠エンドポイント（認証必要）
-		attendances := v1.Group("/attendances")
-		attendances.Use(middleware.AuthMiddleware(&cfg.JWT))
+		// 認証必要エンドポイント
+		protected := v1.Group("")
+		protected.Use(middleware.AuthMiddleware(&cfg.JWT))
 		{
-			attendances.POST("/clock-in", attendanceHandler.ClockIn)
-			attendances.POST("/clock-out", attendanceHandler.ClockOut)
-			attendances.GET("/today", attendanceHandler.GetToday)
-			attendances.GET("/monthly", attendanceHandler.GetMonthly)
+			// 勤怠エンドポイント
+			attendances := protected.Group("/attendances")
+			{
+				attendances.POST("/clock-in", attendanceHandler.ClockIn)
+				attendances.POST("/clock-out", attendanceHandler.ClockOut)
+				attendances.GET("/today", attendanceHandler.GetToday)
+				attendances.GET("/monthly", attendanceHandler.GetMonthly)
+			}
+
+			// 休暇申請エンドポイント
+			leave := protected.Group("/leave")
+			{
+				leave.POST("/requests", leaveHandler.CreateLeaveRequest)
+				leave.GET("/requests", leaveHandler.GetLeaveRequests)
+				leave.GET("/remaining-days", leaveHandler.GetRemainingPaidLeaveDays)
+			}
+
+			// 打刻修正申請エンドポイント
+			corrections := protected.Group("/corrections")
+			{
+				corrections.POST("/requests", correctionHandler.CreateCorrectionRequest)
+				corrections.GET("/requests", correctionHandler.GetCorrectionRequests)
+				corrections.GET("/requests/:id", correctionHandler.GetCorrectionRequest)
+			}
+
+			// 承認エンドポイント（管理者のみ）
+			approvals := protected.Group("/approvals")
+			approvals.Use(middleware.AdminOnly())
+			{
+				approvals.GET("/pending", approvalHandler.GetPendingApprovals)
+				approvals.POST("/leave/:id/approve", approvalHandler.ApproveLeaveRequest)
+				approvals.POST("/leave/:id/reject", approvalHandler.RejectLeaveRequest)
+				approvals.POST("/corrections/:id/approve", approvalHandler.ApproveCorrectionRequest)
+				approvals.POST("/corrections/:id/reject", approvalHandler.RejectCorrectionRequest)
+			}
 		}
 	}
 
