@@ -85,7 +85,7 @@ tasks:
   generate-mocks:
     desc: Generate all mock files
     cmds:
-      - docker compose exec app go generate ./internal/domain/...
+      - docker compose exec app go generate ./internal/domain/... ./internal/service/...
 
   test:
     desc: Run all tests with coverage in Docker

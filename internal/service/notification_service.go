@@ -5,6 +5,8 @@ import (
 	"log"
 )
 
+//go:generate mockgen -source=notification_service.go -destination=../mock/mock_notification_service.go -package=mock
+
 // NotificationService 通知サービスインターフェース
 type NotificationService interface {
 	// NotifyApprovalResult 承認結果を通知
