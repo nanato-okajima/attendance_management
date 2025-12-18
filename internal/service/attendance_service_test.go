@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"errors"
@@ -14,6 +14,7 @@ import (
 	"github.com/nanato-okajima/attendance_management/internal/domain/attendance"
 	"github.com/nanato-okajima/attendance_management/internal/entity"
 	"github.com/nanato-okajima/attendance_management/internal/mock"
+	"github.com/nanato-okajima/attendance_management/internal/service"
 )
 
 func TestAttendanceService_ClockIn(t *testing.T) {
@@ -21,7 +22,7 @@ func TestAttendanceService_ClockIn(t *testing.T) {
 	// 固定時刻を設定 (2025-12-01 09:00:00)
 	fixedTime := time.Date(2025, 12, 1, 9, 0, 0, 0, time.Local)
 	todayDate := time.Date(2025, 12, 1, 0, 0, 0, 0, time.Local)
-	timeProvider := &FixedTimeProvider{FixedTime: fixedTime}
+	timeProvider := &service.FixedTimeProvider{FixedTime: fixedTime}
 	latitude := 35.6812
 	longitude := 139.7671
 
@@ -132,9 +133,9 @@ func TestAttendanceService_ClockIn(t *testing.T) {
 			mockRepo := mock.NewMockAttendanceRepository(ctrl)
 			tt.setupMock(mockRepo)
 
-			service := NewAttendanceServiceWithTimeProvider(mockRepo, testConfig, timeProvider)
+			svc := service.NewAttendanceServiceWithTimeProvider(mockRepo, testConfig, timeProvider)
 
-			got, err := service.ClockIn(tt.param.employeeID, tt.param.latitude, tt.param.longitude, tt.param.clockSource)
+			got, err := svc.ClockIn(tt.param.employeeID, tt.param.latitude, tt.param.longitude, tt.param.clockSource)
 			if tt.hasError {
 				assert.Error(t, err)
 				assert.Nil(t, got)
@@ -153,7 +154,7 @@ func TestAttendanceService_ClockOut(t *testing.T) {
 	t.Parallel()
 	// 固定時刻を設定 (2025-12-01 18:00:00)
 	fixedTime := time.Date(2025, 12, 1, 18, 0, 0, 0, time.Local)
-	timeProvider := &FixedTimeProvider{FixedTime: fixedTime}
+	timeProvider := &service.FixedTimeProvider{FixedTime: fixedTime}
 
 	testConfig := &config.WorkHoursConfig{
 		StartHour:         9,
@@ -251,9 +252,9 @@ func TestAttendanceService_ClockOut(t *testing.T) {
 			mockRepo := mock.NewMockAttendanceRepository(ctrl)
 			tt.setupMock(mockRepo)
 
-			service := NewAttendanceServiceWithTimeProvider(mockRepo, testConfig, timeProvider)
+			svc := service.NewAttendanceServiceWithTimeProvider(mockRepo, testConfig, timeProvider)
 
-			attendance, err := service.ClockOut(tt.param.employeeID, tt.param.latitude, tt.param.longitude)
+			attendance, err := svc.ClockOut(tt.param.employeeID, tt.param.latitude, tt.param.longitude)
 			if tt.hasError {
 				assert.Error(t, err)
 				assert.Nil(t, attendance)
@@ -273,7 +274,7 @@ func TestAttendanceService_GetTodayAttendance(t *testing.T) {
 	// 固定時刻を設定
 	fixedTime := time.Date(2025, 12, 1, 9, 0, 0, 0, time.Local)
 	todayDate := time.Date(2025, 12, 1, 0, 0, 0, 0, time.Local)
-	timeProvider := &FixedTimeProvider{FixedTime: fixedTime}
+	timeProvider := &service.FixedTimeProvider{FixedTime: fixedTime}
 
 	testConfig := &config.WorkHoursConfig{
 		StartHour:         9,
@@ -329,9 +330,9 @@ func TestAttendanceService_GetTodayAttendance(t *testing.T) {
 			mockRepo := mock.NewMockAttendanceRepository(ctrl)
 			tt.setupMock(mockRepo)
 
-			service := NewAttendanceServiceWithTimeProvider(mockRepo, testConfig, timeProvider)
+			svc := service.NewAttendanceServiceWithTimeProvider(mockRepo, testConfig, timeProvider)
 
-			attendance, err := service.GetTodayAttendance(tt.employeeID)
+			attendance, err := svc.GetTodayAttendance(tt.employeeID)
 			if tt.hasError {
 				assert.Error(t, err)
 				assert.Nil(t, attendance)
@@ -412,9 +413,9 @@ func TestAttendanceService_GetMonthlyAttendances(t *testing.T) {
 			mockRepo := mock.NewMockAttendanceRepository(ctrl)
 			tt.setupMock(mockRepo)
 
-			service := NewAttendanceService(mockRepo, testConfig)
+			svc := service.NewAttendanceService(mockRepo, testConfig)
 
-			attendances, err := service.GetMonthlyAttendances(tt.employeeID, tt.year, tt.month)
+			attendances, err := svc.GetMonthlyAttendances(tt.employeeID, tt.year, tt.month)
 			if tt.hasError {
 				assert.Error(t, err)
 				assert.Nil(t, attendances)

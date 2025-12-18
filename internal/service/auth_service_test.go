@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/nanato-okajima/attendance_management/internal/config"
 	"github.com/nanato-okajima/attendance_management/internal/entity"
+	"github.com/nanato-okajima/attendance_management/internal/service"
 )
 
 // MockUserRepository is a mock implementation of UserRepository
@@ -125,9 +126,9 @@ func TestAuthService_Login(t *testing.T) {
 			mockRepo := new(MockUserRepository)
 			tt.setupMock(mockRepo)
 
-			service := NewAuthService(mockRepo, cfg)
+			s := service.NewAuthService(mockRepo, cfg)
 
-			token, user, err := service.Login(tt.email, tt.password)
+			token, user, err := s.Login(tt.email, tt.password)
 
 			if tt.hasError {
 				assert.Error(t, err)
@@ -203,9 +204,9 @@ func TestAuthService_Register(t *testing.T) {
 			mockRepo := new(MockUserRepository)
 			tt.setupMock(mockRepo)
 
-			service := NewAuthService(mockRepo, cfg)
+			s := service.NewAuthService(mockRepo, cfg)
 
-			err := service.Register(tt.user, tt.password)
+			err := s.Register(tt.user, tt.password)
 
 			if tt.hasError {
 				assert.Error(t, err)
