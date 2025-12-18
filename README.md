@@ -234,6 +234,10 @@ task test-coverage
 # coverage.html が生成されます
 ```
 
+> **Note**
+> Service層などのテストは、循環参照回避とブラックボックステスト推奨のため、`package service_test` のように別パッケージとして記述しています。
+
+
 ### Mock生成
 
 リポジトリインターフェースのモックは自動生成されます:

@@ -185,6 +185,20 @@ JWT認証。トークンの検証とクレーム抽出。
 //go:generate mockgen -source=repository.go -destination=../../mock/mock_attendance_repository.go -package=mock -mock_names Repository=MockAttendanceRepository
 ```
 
+### テストパッケージ構成
+
+Service層などのテストでは、循環参照を回避し、ブラックボックステストを推奨するために `package service_test` のように別パッケージとしてテストを記述します。
+
+```go
+package service_test
+
+import (
+    "testing"
+    "github.com/nanato-okajima/attendance_management/internal/service"
+    "github.com/nanato-okajima/attendance_management/internal/mock"
+)
+```
+
 ## 今後の拡張
 
 ### Phase 3C: Graceful Shutdown
