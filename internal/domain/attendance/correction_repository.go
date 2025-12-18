@@ -6,6 +6,8 @@ import (
 	"github.com/nanato-okajima/attendance_management/internal/entity"
 )
 
+//go:generate mockgen -source=correction_repository.go -destination=../../mock/mock_correction_repository.go -package=mock -mock_names CorrectionRepository=MockCorrectionRepository
+
 // CorrectionRepository 打刻修正リポジトリインターフェース
 type CorrectionRepository interface {
 	// Create 打刻修正申請を作成
