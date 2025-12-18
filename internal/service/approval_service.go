@@ -9,6 +9,8 @@ import (
 	"github.com/nanato-okajima/attendance_management/internal/errors"
 )
 
+//go:generate mockgen -source=approval_service.go -destination=../mock/mock_approval_service.go -package=mock
+
 // ApprovalService 承認サービスインターフェース
 type ApprovalService interface {
 	// ApproveLeaveRequest 休暇申請を承認

@@ -9,6 +9,8 @@ import (
 	"github.com/nanato-okajima/attendance_management/internal/errors"
 )
 
+//go:generate mockgen -source=attendance_correction_service.go -destination=../mock/mock_attendance_correction_service.go -package=mock
+
 // AttendanceCorrectionService 打刻修正サービスインターフェース
 type AttendanceCorrectionService interface {
 	// CreateCorrectionRequest 打刻修正申請を作成

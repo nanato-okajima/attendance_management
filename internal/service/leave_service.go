@@ -9,6 +9,8 @@ import (
 	"github.com/nanato-okajima/attendance_management/internal/errors"
 )
 
+//go:generate mockgen -source=leave_service.go -destination=../mock/mock_leave_service.go -package=mock
+
 // LeaveService 休暇申請サービスインターフェース
 type LeaveService interface {
 	// CreateLeaveRequest 休暇申請を作成
